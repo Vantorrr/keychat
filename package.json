@@ -1,0 +1,38 @@
+{
+  "name": "keychatpro",
+  "version": "1.0.0",
+  "description": "KeyChat - Professional Telegram keyword monitoring bot",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "admin": "node admin/server.js",
+    "monitor": "node src/services/demoMonitoring.js",
+    "deploy": "npm install && npm start",
+    "restart": "./restart.sh",
+    "real-monitoring": "node src/startRealMonitoring.js",
+    "start-real-monitoring": "./start-real-monitoring.sh",
+    "admin-dev": "nodemon admin/server.js"
+  },
+  "keywords": ["telegram", "bot", "monitoring", "keywords"],
+  "author": "KeyChat Team",
+  "license": "MIT",
+  "dependencies": {
+    "telegraf": "^4.15.6",
+    "better-sqlite3": "^9.2.2",
+    "dotenv": "^16.3.1",
+    "node-cron": "^3.0.3",
+    "telegram": "^2.26.21",
+    "mtproto-core": "^7.6.0",
+    "input": "^1.0.1",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
