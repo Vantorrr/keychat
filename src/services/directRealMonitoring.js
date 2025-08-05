@@ -378,11 +378,46 @@ class DirectRealMonitoring {
     }
 
     // ОБНОВЛЕНИЕ СПИСКА КАНАЛОВ ИЗВНЕ (ИЗ АДМИНКИ!)
-    updateMonitoredChats(chatList) {
+    async updateMonitoredChats(chatList) {
         if (chatList && Array.isArray(chatList) && chatList.length > 0) {
-            this.monitoredChats = chatList.map(ch => ch.replace('@', ''));
+            const newChats = chatList.map(ch => ch.replace('@', ''));
+            
+            // НАЙТИ НОВЫЕ КАНАЛЫ (которых не было в старом списке)
+            const newChannels = newChats.filter(chat => !this.monitoredChats.includes(chat));
+            
+            // ОБНОВИТЬ СПИСОК
+            this.monitoredChats = newChats;
             logger.info(`🔄 Обновлен список каналов: ${this.monitoredChats.map(c => '@' + c).join(', ')}`);
             logger.info(`📊 Всего каналов для мониторинга: ${this.monitoredChats.length}`);
+            
+            // АВТОМАТИЧЕСКИ ПОДКЛЮЧИТЬСЯ К НОВЫМ КАНАЛАМ
+            if (newChannels.length > 0 && this.isRunning && this.client) {
+                logger.info(`🔥 АВТОПОДКЛЮЧЕНИЕ к новым каналам: ${newChannels.map(c => '@' + c).join(', ')}`);
+                await this.connectToNewChannels(newChannels);
+            }
+        }
+    }
+
+    // НОВЫЙ МЕТОД: Подключение к новым каналам БЕЗ ПЕРЕЗАПУСКА
+    async connectToNewChannels(newChannels) {
+        try {
+            // Получаем все диалоги пользователя
+            const dialogs = await this.client.getDialogs({});
+            
+            for (const newChannel of newChannels) {
+                // Ищем канал среди доступных диалогов
+                const dialog = dialogs.find(d => d.entity.username === newChannel);
+                
+                if (dialog) {
+                    const entity = dialog.entity;
+                    this.chatIds.set(newChannel, entity.id.value);
+                    logger.info(`🔥 АВТОПОДКЛЮЧЕНИЕ: ✅ @${newChannel} подключен к мониторингу!`);
+                } else {
+                    logger.warn(`🔥 АВТОПОДКЛЮЧЕНИЕ: ⚠️ @${newChannel} недоступен (юзер бот не состоит в канале)`);
+                }
+            }
+        } catch (error) {
+            logger.error('❌ Ошибка автоподключения к новым каналам:', error);
         }
     }
 }

@@ -38,7 +38,7 @@ class MonitoringService {
                     console.log('📝 Список каналов:', channelUsernames.join(', '));
                     console.log('🎯 Активные каналы:', channels.filter(ch => ch.is_active).map(ch => ch.username).join(', '));
                     
-                    this.directRealMonitoring.updateMonitoredChats(channelUsernames);
+                    await this.directRealMonitoring.updateMonitoredChats(channelUsernames);
                     logger.info(`✅ Передано ${channelUsernames.length} каналов в мониторинг`);
                 } else {
                     logger.warn('⚠️  AdminHandler не найден, используем базовые каналы');
@@ -215,7 +215,7 @@ class MonitoringService {
                 console.log('📊 Новый список каналов:', channelUsernames.join(', '));
                 
                 if (this.directRealMonitoring.updateMonitoredChats) {
-                    this.directRealMonitoring.updateMonitoredChats(channelUsernames);
+                    await this.directRealMonitoring.updateMonitoredChats(channelUsernames);
                     logger.info(`✅ Каналы обновлены! Всего: ${channelUsernames.length}`);
                     return true;
                 }
