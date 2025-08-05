@@ -49,7 +49,7 @@ module.exports = {
             ]
         },
         2: {
-            name: 'Маркетинг/агентства', 
+            name: 'Белый маркетинг', 
             chats: ['@marketing_pro', '@digital_agencies', '@smm_experts']
         }
     }

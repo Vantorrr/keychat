@@ -46,8 +46,9 @@ const monitoringService = new MonitoringService();
 // Создание админ-хендлера
 const adminHandler = new AdminHandler();
 
-// Делаем adminHandler глобально доступным для мониторинга
+// Делаем adminHandler и monitoringService глобально доступными
 global.adminHandler = adminHandler;
+global.monitoringService = monitoringService;
 
 // Инициализация базы данных
 async function initBot() {
@@ -178,6 +179,17 @@ bot.hears('🏠 Главное меню', async (ctx) => {
 
 // Обработка callback queries (inline кнопки)
 bot.action(/delete_keyword_(\d+)/, handleDeleteKeyword);
+
+// Обработка выбора категории при добавлении канала
+bot.action(/category_(.+)/, (ctx) => {
+    const category = ctx.match[1];
+    adminHandler.handleCategorySelection(ctx, category);
+});
+
+// Обработка отмены добавления канала
+bot.action('cancel_adding', (ctx) => {
+    adminHandler.handleCancelAdding(ctx);
+});
 
 // Обработка текстовых сообщений (для ввода ключевых слов и чатов)
 bot.on('text', async (ctx) => {

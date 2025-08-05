@@ -31,6 +31,13 @@ class MonitoringService {
                     logger.info('📋 Загружаем каналы из админки...');
                     const channels = await global.adminHandler.getChannels();
                     const channelUsernames = channels.map(ch => ch.username);
+                    
+                    // ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ ДЛЯ ДИАГНОСТИКИ
+                    console.log('🔍 ОТЛАДКА КАНАЛОВ:');
+                    console.log('📊 Всего каналов из БД:', channels.length);
+                    console.log('📝 Список каналов:', channelUsernames.join(', '));
+                    console.log('🎯 Активные каналы:', channels.filter(ch => ch.is_active).map(ch => ch.username).join(', '));
+                    
                     this.directRealMonitoring.updateMonitoredChats(channelUsernames);
                     logger.info(`✅ Передано ${channelUsernames.length} каналов в мониторинг`);
                 } else {
@@ -38,6 +45,7 @@ class MonitoringService {
                 }
             } catch (err) {
                 logger.warn('⚠️  Не удалось загрузить каналы из админки:', err.message);
+                console.error('❌ Ошибка загрузки каналов:', err);
             }
         }
 
@@ -188,6 +196,34 @@ class MonitoringService {
         } catch (error) {
             console.error('❌ Error simulating message:', error);
         }
+    }
+
+    // НОВЫЙ МЕТОД: Обновление каналов мониторинга БЕЗ ПЕРЕЗАПУСКА!
+    async updateChannelsFromAdmin() {
+        if (!this.isRunning) {
+            logger.warn('⚠️  Мониторинг не запущен, каналы не обновлены');
+            return false;
+        }
+
+        try {
+            if (global.adminHandler && typeof global.adminHandler.getChannels === 'function') {
+                logger.info('🔄 Обновляем каналы из админки...');
+                const channels = await global.adminHandler.getChannels();
+                const channelUsernames = channels.map(ch => ch.username);
+                
+                console.log('🔄 ОБНОВЛЕНИЕ КАНАЛОВ:');
+                console.log('📊 Новый список каналов:', channelUsernames.join(', '));
+                
+                if (this.directRealMonitoring.updateMonitoredChats) {
+                    this.directRealMonitoring.updateMonitoredChats(channelUsernames);
+                    logger.info(`✅ Каналы обновлены! Всего: ${channelUsernames.length}`);
+                    return true;
+                }
+            }
+        } catch (err) {
+            logger.error('❌ Ошибка обновления каналов:', err);
+        }
+        return false;
     }
 }
 

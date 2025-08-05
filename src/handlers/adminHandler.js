@@ -3,6 +3,7 @@ const sqlite3 = require('sqlite3').verbose();
 const AdminDatabase = require('../database/adminSchema');
 
 const ADMIN_IDS = ['8141463258', '722300326']; // Админы бро!
+const config = require('../../config');
 
 class AdminHandler {
     constructor() {
@@ -10,6 +11,7 @@ class AdminHandler {
         this.db = new sqlite3.Database(DB_PATH);
         this.adminDB = new AdminDatabase('./database/keychat.db'); // РЕАЛЬНАЯ АДМИН БД!
         this.adminStates = new Map(); // Состояния админов
+        this.adminData = new Map(); // Для хранения данных админов (выбранная категория и т.д.)
     }
 
     // Проверка прав админа
@@ -117,16 +119,54 @@ class AdminHandler {
     async handleAddChannel(ctx) {
         if (!this.isAdmin(ctx.from.id)) return;
 
-        this.adminStates.set(ctx.from.id, 'adding_channel');
+        this.adminStates.set(ctx.from.id, 'selecting_category');
         
+        // Создаем кнопки категорий
+        const categoryButtons = Object.values(config.categories).map(category => 
+            Markup.button.callback(category.name, `category_${category.name}`)
+        );
+
         await ctx.reply(`➕ *ДОБАВЛЕНИЕ КАНАЛА*
 
+📂 *Выберите категорию:*`, {
+            parse_mode: 'Markdown',
+            reply_markup: Markup.inlineKeyboard([
+                categoryButtons,
+                [Markup.button.callback('❌ Отмена', 'cancel_adding')]
+            ]).reply_markup
+        });
+    }
+
+    // Обработка выбора категории
+    async handleCategorySelection(ctx, category) {
+        if (!this.isAdmin(ctx.from.id)) return;
+        
+        const state = this.adminStates.get(ctx.from.id);
+        if (state !== 'selecting_category') return;
+
+        // Сохраняем выбранную категорию
+        this.adminData.set(ctx.from.id, { selectedCategory: category });
+        this.adminStates.set(ctx.from.id, 'adding_channel');
+
+        await ctx.editMessageText(`➕ *ДОБАВЛЕНИЕ КАНАЛА*
+
+📂 *Категория:* ${category}
 📝 *Отправьте username канала:*
 Например: \`@vantor_casino\`
 
 ❌ Для отмены введите: \`/cancel\``, {
             parse_mode: 'Markdown'
         });
+    }
+
+    // Отмена добавления канала
+    async handleCancelAdding(ctx) {
+        if (!this.isAdmin(ctx.from.id)) return;
+        
+        this.adminStates.delete(ctx.from.id);
+        this.adminData.delete(ctx.from.id);
+
+        await ctx.editMessageText('❌ Добавление канала отменено.', this.getAdminKeyboard());
     }
 
     // Обработка ввода канала
@@ -140,6 +180,7 @@ class AdminHandler {
         
         if (input === '/cancel') {
             this.adminStates.delete(ctx.from.id);
+            this.adminData.delete(ctx.from.id);
             await ctx.reply('❌ Добавление канала отменено.', this.getAdminKeyboard());
             return;
         }
@@ -151,18 +192,34 @@ class AdminHandler {
         }
 
         try {
+            // Получаем выбранную категорию
+            const adminData = this.adminData.get(ctx.from.id);
+            const selectedCategory = adminData?.selectedCategory || 'Арбитраж трафика';
+
             // Добавляем канал в БД
-            const result = await this.addChannel(input, 'Арбитраж трафика');
+            const result = await this.addChannel(input, selectedCategory);
             
             if (result.success) {
                 this.adminStates.delete(ctx.from.id);
+                this.adminData.delete(ctx.from.id);
+
+                // АВТОМАТИЧЕСКОЕ ОБНОВЛЕНИЕ МОНИТОРИНГА!
+                let monitoringUpdated = false;
+                try {
+                    const monitoringService = require('../../src/services/monitoringService');
+                    if (global.monitoringService && global.monitoringService.updateChannelsFromAdmin) {
+                        monitoringUpdated = await global.monitoringService.updateChannelsFromAdmin();
+                    }
+                } catch (err) {
+                    console.log('⚠️  Не удалось автоматически обновить мониторинг:', err.message);
+                }
+
                 await ctx.reply(`✅ *КАНАЛ ДОБАВЛЕН!*
 
 📺 *Канал:* \`${input}\`
-📂 *Категория:* Арбитраж трафика
+📂 *Категория:* ${selectedCategory}
 ⚡ *Статус:* Активен
-
-🔄 *Перезапустите мониторинг для применения изменений.*`, {
+${monitoringUpdated ? '🔄 *Мониторинг автоматически обновлен!*' : '🔄 *Перезапустите мониторинг для применения изменений.*'}`, {
                     parse_mode: 'Markdown',
                     ...this.getAdminKeyboard()
                 });
