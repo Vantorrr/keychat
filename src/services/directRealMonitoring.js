@@ -3,7 +3,7 @@ const { StringSession } = require('telegram/sessions');
 const { Api } = require('telegram/tl');
 const UserService = require('../database/userService');
 const logger = require('../utils/logger');
-const input = require('input');
+const readline = require('readline');
 
 class DirectRealMonitoring {
     constructor() {
@@ -71,15 +71,31 @@ class DirectRealMonitoring {
 
         await this.client.start({
             phoneNumber: async () => {
-                console.log('\n📱 Введите ваш номер телефона:');
-                const phone = await input.text('Телефон: ');
-                logger.info(`📱 Номер введен: ${phone}`);
-                return phone;
+                const rl = readline.createInterface({
+                    input: process.stdin,
+                    output: process.stdout
+                });
+                
+                return new Promise((resolve) => {
+                    rl.question('📱 Введите номер телефона (например +79991234567): ', (answer) => {
+                        rl.close();
+                        logger.info(`📱 Номер введен: ${answer}`);
+                        resolve(answer);
+                    });
+                });
             },
             password: async () => {
-                console.log('\n🔐 Введите пароль 2FA (если есть):');
-                const pwd = await input.text('Пароль: ');
-                return pwd;
+                const rl = readline.createInterface({
+                    input: process.stdin,
+                    output: process.stdout
+                });
+                
+                return new Promise((resolve) => {
+                    rl.question('🔐 Введите пароль 2FA (если есть): ', (answer) => {
+                        rl.close();
+                        resolve(answer);
+                    });
+                });
             },
             phoneCode: async () => {
                 console.log('\n💬 Введите код из SMS/Telegram:');
@@ -296,10 +312,10 @@ class DirectRealMonitoring {
                 return;
             }
 
-            // Rate limiting - задержка между отправкой сообщений
-            const now = Date.now();
-            const timeSinceLastMessage = now - this.lastMessageTime;
-            const minDelay = 1500; // 1.5 секунды между сообщениями
+                                // Rate limiting - задержка между отправкой сообщений
+                    const now = Date.now();
+                    const timeSinceLastMessage = now - this.lastMessageTime;
+                    const minDelay = 10000; // 10 секунд между сообщениями
             
             if (timeSinceLastMessage < minDelay) {
                 await new Promise(resolve => setTimeout(resolve, minDelay - timeSinceLastMessage));
