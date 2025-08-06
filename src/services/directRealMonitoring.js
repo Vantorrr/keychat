@@ -26,6 +26,8 @@ class DirectRealMonitoring {
 
         this.chatIds = new Map();
         this.lastMessageIds = new Map();
+        this.lastMessageTime = 0; // Для rate limiting
+        this.sentMessages = new Set(); // Для фильтра дубликатов
     }
 
     async start(botInstance) {
@@ -287,6 +289,22 @@ class DirectRealMonitoring {
         try {
             if (!this.botInstance) return;
 
+            // Проверка дубликатов
+            const messageKey = `${userId}_${data.chat}_${data.messageId}`;
+            if (this.sentMessages.has(messageKey)) {
+                logger.info(`⚠️ Дубликат сообщения пропущен: ${messageKey}`);
+                return;
+            }
+
+            // Rate limiting - задержка между отправкой сообщений
+            const now = Date.now();
+            const timeSinceLastMessage = now - this.lastMessageTime;
+            const minDelay = 1500; // 1.5 секунды между сообщениями
+            
+            if (timeSinceLastMessage < minDelay) {
+                await new Promise(resolve => setTimeout(resolve, minDelay - timeSinceLastMessage));
+            }
+
             const messageText = `🔥 РЕАЛЬНОЕ СООБЩЕНИЕ ИЗ ЧАТА! 🔥
 
 🎯 <b>Найдено ключевое слово!</b>
@@ -307,10 +325,24 @@ class DirectRealMonitoring {
                 disable_web_page_preview: true
             });
 
+            this.lastMessageTime = Date.now();
+            this.sentMessages.add(messageKey); // Запоминаем отправленное сообщение
+            
+            // Очищаем старые записи (старше 1 часа)
+            if (this.sentMessages.size > 1000) {
+                this.sentMessages.clear();
+            }
+            
             logger.info(`✅ РЕАЛЬНОЕ уведомление отправлено пользователю ${userId}`);
 
         } catch (error) {
             logger.error('Ошибка отправки уведомления:', error);
+            // Если получили rate limit - ждем дольше
+            if (error.description && error.description.includes('Too Many Requests')) {
+                const retryAfter = error.parameters?.retry_after || 60;
+                logger.warn(`⏳ Rate limit! Ждем ${retryAfter} секунд...`);
+                await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+            }
         }
     }
 
