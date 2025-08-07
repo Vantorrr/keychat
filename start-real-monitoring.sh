@@ -4,14 +4,24 @@ echo "🔥 ЗАПУСК РЕАЛЬНОГО User API МОНИТОРИНГА"
 echo "========================================"
 echo ""
 echo "📱 Система подключится к вашим реальным Telegram чатам:"
-echo "   • @vantor_casino"
-echo "   • @cpa_podslushano" 
-echo "   • @ohmyclick_chat"
-echo "   • @affilchat"
-echo "   • @BrokerCredlt"
-echo "   • @rabotaa_onlayn"
-echo "   • @rabota_chatz"
-echo "   • @solobuyernotes"
+
+# Получаем список каналов из базы данных
+CHANNELS=$(node -e "
+const sqlite3 = require('sqlite3').verbose();
+const db = new sqlite3.Database('./database/keychat.db');
+db.all('SELECT username FROM monitored_channels WHERE is_active = 1', (err, rows) => {
+    if (err) {
+        console.log('   • Ошибка загрузки каналов из БД');
+    } else {
+        rows.forEach(row => {
+            console.log('   • @' + row.username);
+        });
+    }
+    db.close();
+});
+")
+
+echo "$CHANNELS"
 echo ""
 echo "🔐 Потребуется ввести ваши данные Telegram:"
 echo "   1️⃣ Номер телефона (например: +79123456789)"
