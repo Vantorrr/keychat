@@ -98,10 +98,17 @@ class DirectRealMonitoring {
                 });
             },
             phoneCode: async () => {
-                console.log('\n💬 Введите код из SMS/Telegram:');
-                const code = await input.text('Код: ');
-                logger.info(`💬 Код введен: ${code}`);
-                return code;
+                const rl = readline.createInterface({
+                    input: process.stdin,
+                    output: process.stdout
+                });
+                return new Promise((resolve) => {
+                    rl.question('💬 Введите код из SMS/Telegram: ', (answer) => {
+                        rl.close();
+                        logger.info(`💬 Код введен: ${answer}`);
+                        return resolve(answer);
+                    });
+                });
             },
             onError: (err) => {
                 logger.error('Ошибка авторизации:', err);
